@@ -2,13 +2,17 @@ extern crate slack;
 extern crate regex;
 
 use slack::{Event, RtmClient};
+use karma;
 
 pub struct SlackHandler;
 
 #[allow(unused_variables)]
-impl<T> slack::EventHandler for SlackHandler<T> {
+impl slack::EventHandler for SlackHandler {
     fn on_event(&mut self, cli: &RtmClient, event: Event) {
-        println!("on_event(event: {:?})", event);
+        match event {
+            Event::Message(msg) => karma::karma::handle_message(cli, msg),
+            _ => ()
+        }
     }
 
     fn on_close(&mut self, cli: &RtmClient) {
@@ -35,5 +39,3 @@ impl<T> slack::EventHandler for SlackHandler<T> {
         cli.sender().send_message(&general_channel_id, "waking up...").unwrap();
     }
 }
-
-
