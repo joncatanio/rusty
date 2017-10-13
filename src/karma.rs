@@ -62,6 +62,24 @@ impl KarmaManager {
         */
 
         self.db_manager.update_users(&slack_users);
+        let records = vec![
+            KarmaRecord {
+                recipient: Some(String::from("U74JLD0MB")),
+                donor: Some(String::from("U73S5T5MW")),
+                points: Some(1),
+            },
+            KarmaRecord {
+                recipient: Some(String::from("U75H354P9")),
+                donor: Some(String::from("U75BBLRL6")),
+                points: Some(1),
+            },
+            KarmaRecord {
+                recipient: Some(String::from("U75H354P9")),
+                donor: Some(String::from("U75BBLRL6")),
+                points: Some(-1),
+            },
+        ];
+        self.db_manager.write_karma(&records);
     }
 
     // Maybe rip this into the slack handler struct
@@ -79,6 +97,7 @@ impl KarmaManager {
                     last_name: profile.last_name.clone(),
                     email: profile.email.clone(),
                     phone: profile.phone.clone(),
+                    deleted: false,
                 }
             }).collect();
 

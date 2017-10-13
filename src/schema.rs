@@ -15,4 +15,5 @@ pub struct UserRecord {
     pub last_name: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
+    pub deleted: bool,
 }
