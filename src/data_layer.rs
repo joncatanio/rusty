@@ -40,4 +40,31 @@ impl DbManager {
 
 		db_users
     }
+
+    pub fn update_users(&self, users: &Vec<UserRecord>) {
+        for mut stmt in self.pool.as_ref().unwrap().prepare("
+            INSERT INTO Users
+                (slack_id, nickname, first_name, last_name, email, phone)
+            VALUES
+                (:slack_id, :nickname, :first_name, :last_name, :email, :phone)
+            ON DUPLICATE KEY UPDATE
+                slack_id   = VALUES(slack_id),
+                nickname   = VALUES(nickname),
+                first_name = VALUES(first_name),
+                last_name  = VALUES(last_name),
+                email      = VALUES(email),
+                phone      = VALUES(phone)
+        ").into_iter() {
+            for user in users.iter() {
+                stmt.execute(params!{
+                    "slack_id"   => user.slack_id.clone(),
+                    "nickname"   => user.nickname.clone(),
+                    "first_name" => user.first_name.clone(),
+                    "last_name"  => user.last_name.clone(),
+                    "email"      => user.email.clone(),
+                    "phone"      => user.phone.clone(),
+                }).unwrap();
+            }
+        }
+    }
 }

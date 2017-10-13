@@ -49,14 +49,19 @@ impl KarmaManager {
         let slack_users = KarmaManager::fetch_slack_user_list(cli);
         let db_users = self.db_manager.fetch_db_user_list();
 
+        /*
         let new_users: Vec<&UserRecord> =
             slack_users.iter().filter(|slack_user| {
                 db_users.iter().filter(|db_user| {
-                    slack_user.id.unwrap() == db_user.id.unwrap()
+                    slack_user.slack_id.as_ref().unwrap()
+                    == db_user.slack_id.as_ref().unwrap()
                 }).collect::<Vec<&UserRecord>>().is_empty()
             }).collect();
 
         new_users.iter().for_each(|user| println!("NEW USER: {:?}", user));
+        */
+
+        self.db_manager.update_users(&slack_users);
     }
 
     // Maybe rip this into the slack handler struct
