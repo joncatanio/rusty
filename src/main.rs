@@ -1,7 +1,10 @@
 extern crate slack;
+extern crate slack_api;
 extern crate regex;
 #[macro_use]
 extern crate mysql;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod slackhandler;
 pub mod data_layer;

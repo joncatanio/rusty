@@ -1,11 +1,12 @@
 extern crate mysql;
 
-use slack::RtmClient;
-use slack::Message;
+use slack::{Message, Event, RtmClient, User};
 use slack::Message::Standard;
+use slack_api::MessageStandard;
 use regex::Regex;
 use data_layer::DbManager;
 use schema::{KarmaRecord, UserRecord};
+use std::collections::HashMap;
 
 pub struct KarmaManager {
     db_manager: DbManager,
@@ -19,72 +20,131 @@ impl KarmaManager {
     }
 
     pub fn handle_message(&self, cli: &RtmClient, msg: Box<Message>) {
-        println!("Handling message...");
-        self.update_users(&cli);
+        match *msg {
+            Standard(std_msg) => self.handle_std_msg(cli, &std_msg),
+            _ => return,
+        }
+    }
 
-        let text = match *msg {
-            Standard(std_msg) => {
-                println!("Sender: {}", std_msg.user.unwrap());
-                std_msg.text
-            },
-            _ => None,
+    pub fn handle_std_msg(&self, cli: &RtmClient, msg: &MessageStandard) {
+        let text = &msg.text;
+
+        let recipients = match *text {
+            Some(ref text) => Some(self.parse_recipients(&text[..])),
+            None => None,
         };
 
-        match text {
-            Some(text) => self.parse_recipients(&text[..]),
-            None => println!("not standard message"),
+        match recipients {
+            Some(ref recipients) if !recipients.is_empty() => {
+                let db_users = self.db_manager.fetch_db_user_list();
+                //let mut records = Vec::new();
+
+                /*
+                recipients.iter().for_each(|&(ref user, points)| {
+                    db_users.iter().for_each(|db_user| {
+                        let nickname = db_user.nickname
+                            .clone().unwrap_or("".to_string()).to_lowercase();
+                        let first_name = db_user.first_name
+                            .clone().unwrap_or("".to_string()).to_lowercase();
+                        let last_name = db_user.last_name
+                            .clone().unwrap_or("".to_string()).to_lowercase();
+
+                        if nickname == *user.to_lowercase()
+                            || first_name == *user.to_lowercase()
+                            || last_name == *user.to_lowercase() {
+                            records.push(
+                                KarmaRecord {
+                                    recipient: db_user.slack_id.clone(),
+                                    donor: msg.user.clone(),
+                                    points: Some(points),
+                                }
+                            );
+                        }
+                    });
+                });*/
+                let blah: Vec<&UserRecord> = db_users.iter().filter(|db_user| {
+                    let mut recipient = false;
+
+                    recipients.iter().for_each(|ref tup| {
+                        let nickname = db_user.nickname
+                            .clone().unwrap_or("".to_string()).to_lowercase();
+                        let first_name = db_user.first_name
+                            .clone().unwrap_or("".to_string()).to_lowercase();
+                        let last_name = db_user.last_name
+                            .clone().unwrap_or("".to_string()).to_lowercase();
+
+                        if nickname == tup.0.to_lowercase()
+                            || first_name == tup.0.to_lowercase()
+                            || last_name == tup.0.to_lowercase() {
+                            recipient = true;
+                        }
+                    });
+
+                    recipient
+                }).collect();
+
+                println!("RECIPIENT: {:?}", recipients);
+                println!("RECORDS: {:?}", blah);
+            },
+            Some(_) => (),
+            None => (),
         }
     }
 
-    fn parse_recipients(&self, text: &str) {
-        let re = Regex::new(r"([[:alpha:]0-9]+)\+\+").unwrap();
-
-        for capture in re.captures_iter(text) {
-            println!("Captured: {} {}", &capture[0], &capture[1]);
+    // TODO implement when API fires reaction events
+    pub fn handle_reaction(&self, cli: &RtmClient, event: &Event) {
+        // Not implemented
+        match event {
+            &Event::ReactionAdded { .. } => (),
+            _ => return,
         }
     }
 
-    fn update_users(&self, cli: &RtmClient) {
-        println!("Updating users...");
-        let slack_users = KarmaManager::fetch_slack_user_list(cli);
-        let db_users = self.db_manager.fetch_db_user_list();
+    // Parses each increment/decrement applied to a user and returns a
+    // (String, i32) tuple representing (user, points).
+    fn parse_recipients(&self, text: &str) -> Vec<(String, i32)> {
+        let mut recipient_map = HashMap::new();
 
-        /*
-        let new_users: Vec<&UserRecord> =
-            slack_users.iter().filter(|slack_user| {
-                db_users.iter().filter(|db_user| {
-                    slack_user.slack_id.as_ref().unwrap()
-                    == db_user.slack_id.as_ref().unwrap()
-                }).collect::<Vec<&UserRecord>>().is_empty()
-            }).collect();
+        for capture in INC_RE.captures_iter(text) {
+            *recipient_map.entry(String::from(&capture[1])).or_insert(0) += 1;
+        }
 
-        new_users.iter().for_each(|user| println!("NEW USER: {:?}", user));
-        */
+        for capture in DEC_RE.captures_iter(text) {
+            *recipient_map.entry(String::from(&capture[1])).or_insert(0) += -1;
+        }
 
-        self.db_manager.update_users(&slack_users);
-        let records = vec![
-            KarmaRecord {
-                recipient: Some(String::from("U74JLD0MB")),
-                donor: Some(String::from("U73S5T5MW")),
-                points: Some(1),
-            },
-            KarmaRecord {
-                recipient: Some(String::from("U75H354P9")),
-                donor: Some(String::from("U75BBLRL6")),
-                points: Some(1),
-            },
-            KarmaRecord {
-                recipient: Some(String::from("U75H354P9")),
-                donor: Some(String::from("U75BBLRL6")),
-                points: Some(-1),
+        recipient_map.iter()
+            .map(|(name, points)| (name.clone(), points.clone())).collect()
+    }
+
+    pub fn update_user(&self, cli: &RtmClient, user: &User) {
+        let profile = user.profile.as_ref().unwrap();
+        let user_vec = vec![
+            UserRecord {
+                id: None,
+                slack_id: user.id.clone(),
+                nickname: user.name.clone(),
+                first_name: profile.first_name.clone(),
+                last_name: profile.last_name.clone(),
+                email: profile.email.clone(),
+                phone: profile.phone.clone(),
+                deleted: false,
             },
         ];
-        self.db_manager.write_karma(&records);
+
+        println!("Updating User: {:?}", user_vec);
+
+        self.db_manager.update_users(&user_vec);
+    }
+
+    pub fn update_users(&self, cli: &RtmClient) {
+        let slack_users = KarmaManager::fetch_slack_user_list(cli);
+        self.db_manager.update_users(&slack_users);
     }
 
     // Maybe rip this into the slack handler struct
     fn fetch_slack_user_list(cli: &RtmClient) -> Vec<UserRecord> {
-        let slack_users: Vec<UserRecord> = 
+        let slack_users: Vec<UserRecord> =
             cli.start_response().users.as_ref().unwrap().iter()
             .map(|user| {
                 let profile = user.profile.as_ref().unwrap();
@@ -107,4 +167,12 @@ impl KarmaManager {
 
         slack_users
     }
+}
+
+/*
+ * Regular Expressions
+ */
+lazy_static! {
+    static ref INC_RE: Regex = Regex::new(r"([[:alpha:]0-9]+)\+\+").unwrap();
+    static ref DEC_RE: Regex = Regex::new(r"([[:alpha:]0-9]+)--").unwrap();
 }

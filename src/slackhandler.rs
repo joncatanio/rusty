@@ -12,6 +12,10 @@ impl slack::EventHandler for SlackHandler {
     fn on_event(&mut self, cli: &RtmClient, event: Event) {
         match event {
             Event::Message(msg) => self.karma_manager.handle_message(cli, msg),
+            Event::UserChange { user }
+                => self.karma_manager.update_user(cli, &user),
+            Event::ReactionAdded { .. }
+                => self.karma_manager.handle_reaction(cli, &event),
             _ => ()
         }
     }

@@ -33,11 +33,6 @@ impl DbManager {
 					}
 				}).collect()
 			}).unwrap();
-
-		for user in db_users.iter() {
-			println!("Database User: {:?}", user);
-		}
-
 		db_users
     }
 
