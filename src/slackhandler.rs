@@ -1,16 +1,17 @@
 extern crate slack;
-extern crate regex;
 
 use slack::{Event, RtmClient};
-use karma;
+use karma::KarmaManager;
 
-pub struct SlackHandler;
+pub struct SlackHandler {
+    pub karma_manager: KarmaManager,
+}
 
 #[allow(unused_variables)]
 impl slack::EventHandler for SlackHandler {
     fn on_event(&mut self, cli: &RtmClient, event: Event) {
         match event {
-            Event::Message(msg) => karma::karma::handle_message(cli, msg),
+            Event::Message(msg) => self.karma_manager.handle_message(cli, msg),
             _ => ()
         }
     }

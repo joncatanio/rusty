@@ -1,0 +1,4 @@
+DROP INDEX UserIndex ON Users;
+
+DROP TABLE IF EXISTS Karma;
+DROP TABLE IF EXISTS Users;
