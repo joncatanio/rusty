@@ -37,32 +37,9 @@ impl KarmaManager {
         match recipients {
             Some(ref recipients) if !recipients.is_empty() => {
                 let db_users = self.db_manager.fetch_db_user_list();
-                //let mut records = Vec::new();
+                let mut records: Vec<&UserRecord> = Vec::new();
 
-                /*
-                recipients.iter().for_each(|&(ref user, points)| {
-                    db_users.iter().for_each(|db_user| {
-                        let nickname = db_user.nickname
-                            .clone().unwrap_or("".to_string()).to_lowercase();
-                        let first_name = db_user.first_name
-                            .clone().unwrap_or("".to_string()).to_lowercase();
-                        let last_name = db_user.last_name
-                            .clone().unwrap_or("".to_string()).to_lowercase();
-
-                        if nickname == *user.to_lowercase()
-                            || first_name == *user.to_lowercase()
-                            || last_name == *user.to_lowercase() {
-                            records.push(
-                                KarmaRecord {
-                                    recipient: db_user.slack_id.clone(),
-                                    donor: msg.user.clone(),
-                                    points: Some(points),
-                                }
-                            );
-                        }
-                    });
-                });*/
-                let blah: Vec<&UserRecord> = db_users.iter().filter(|db_user| {
+                records = db_users.iter().filter(|db_user| {
                     let mut recipient = false;
 
                     recipients.iter().for_each(|ref tup| {
@@ -84,7 +61,7 @@ impl KarmaManager {
                 }).collect();
 
                 println!("RECIPIENT: {:?}", recipients);
-                println!("RECORDS: {:?}", blah);
+                println!("RECORDS: {:?}", records);
             },
             Some(_) => (),
             None => (),
@@ -160,10 +137,6 @@ impl KarmaManager {
                     deleted: false,
                 }
             }).collect();
-
-        for user in slack_users.iter() {
-            println!("Slack User: {:?}", user);
-        }
 
         slack_users
     }

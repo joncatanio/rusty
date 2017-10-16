@@ -21,10 +21,11 @@ impl slack::EventHandler for SlackHandler {
     }
 
     fn on_close(&mut self, cli: &RtmClient) {
-        println!("on_close");
+        println!("Function: `on_close`");
     }
 
     fn on_connect(&mut self, cli: &RtmClient) {
+        //println!("START RESPONSE: {:?}", cli.start_response());
         println!("Function: `on_connect` -> updating users...");
         self.karma_manager.update_users(cli);
 
