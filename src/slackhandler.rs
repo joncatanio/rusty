@@ -25,7 +25,9 @@ impl slack::EventHandler for SlackHandler {
     }
 
     fn on_connect(&mut self, cli: &RtmClient) {
-        println!("on_connect");
+        println!("Function: `on_connect` -> updating users...");
+        self.karma_manager.update_users(cli);
+
         // find the general channel id from the `StartResponse`
         let general_channel_id = cli.start_response()
             .channels
