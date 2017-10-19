@@ -72,4 +72,10 @@ impl DbManager {
             }
         }
     }
+
+    // TODO implement to get the karma SUM of each user. If `users` is None
+    // return karma for all users.
+    pub fn get_karma(&self, users: Option<&Vec<String>>) {
+        // unimplemented
+    }
 }

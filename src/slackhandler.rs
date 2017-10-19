@@ -43,6 +43,6 @@ impl slack::EventHandler for SlackHandler {
             .and_then(|chan| chan.id.as_ref())
             .expect("public-testing channel not found");
 
-        cli.sender().send_message(&general_channel_id, "waking up... <@U75H354P9>").unwrap();
+        cli.sender().send_message(&general_channel_id, "waking up...").unwrap();
     }
 }

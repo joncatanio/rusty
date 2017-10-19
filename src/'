@@ -21,6 +21,7 @@ impl KarmaManager {
     }
 
     pub fn handle_message(&self, cli: &RtmClient, msg: Box<Message>) {
+        println!("MESSAGE: {:?}", msg);
         match *msg {
             Standard(msg_std) => self.handle_std_msg(cli, &msg_std),
             MessageReplied(msg_reply) => self.handle_msg_reply(cli, &msg_reply),
@@ -96,17 +97,11 @@ impl KarmaManager {
 
                 self.db_manager.write_karma(&records);
 
-                // TODO make a DB call to get the SUM of each relevant
-                // user to add to the response string. Add a response
-                // string vector and pull a random string rom it to return.
-                let mut response: String = String::new();
-                for record in records.iter() {
-                    response.push_str(format!("<@{}> karma [{}]\n",
-                        record.recipient.clone().unwrap(),
-                        record.points.clone().unwrap()).as_str());
-                }
-
-                cli.sender().send_message(channel, response.as_str()).unwrap();
+                let mut response: String = records.iter()
+                    .flat_map(|record| {
+                        format!("<@{}> karma! [{}]",
+                            record.recipient.unwrap(), record.points.unwrap());
+                    }).collect();
             },
             Some(_) => (),
             None => (),
@@ -127,7 +122,6 @@ impl KarmaManager {
         }
 
         let recipient_vec: Vec<(String, i32)> = recipient_map.iter()
-            .filter(|&(name, points)| *points != 0)
             .map(|(name, points)| (name.clone(), points.clone())).collect();
 
         match recipient_vec.is_empty() {
@@ -175,7 +169,7 @@ impl KarmaManager {
 lazy_static! {
     // Slack now converts a mention into a user id of the form: <@U123>
     static ref INC_RE: Regex =
-        Regex::new(r"<@([[:alpha:]0-9]+)>\s?\+\+").unwrap();
+        Regex::new(r"<@([[:alpha:]0-9]+)>\+\+").unwrap();
     static ref DEC_RE: Regex =
-        Regex::new(r"<@([[:alpha:]0-9]+)>\s?--").unwrap();
+        Regex::new(r"<@([[:alpha:]0-9]+)>--").unwrap();
 }
