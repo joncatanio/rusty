@@ -10,10 +10,5 @@ pub struct KarmaRecord {
 pub struct UserRecord {
     pub id: Option<i32>,
     pub slack_id: Option<String>,
-    pub nickname: Option<String>,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub email: Option<String>,
-    pub phone: Option<String>,
     pub deleted: bool,
 }

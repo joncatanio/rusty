@@ -25,7 +25,6 @@ impl slack::EventHandler for SlackHandler {
     }
 
     fn on_connect(&mut self, cli: &RtmClient) {
-        //println!("START RESPONSE: {:?}", cli.start_response());
         println!("Function: `on_connect` -> updating users...");
         self.karma_manager.update_users(cli);
 
@@ -44,6 +43,6 @@ impl slack::EventHandler for SlackHandler {
             .and_then(|chan| chan.id.as_ref())
             .expect("public-testing channel not found");
 
-        cli.sender().send_message(&general_channel_id, "waking up...").unwrap();
+        cli.sender().send_message(&general_channel_id, "waking up... <@U75H354P9>").unwrap();
     }
 }

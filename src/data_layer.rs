@@ -16,19 +16,14 @@ impl DbManager {
 
     pub fn fetch_db_user_list(&self) -> Vec<UserRecord> {
 		let db_users: Vec<UserRecord> =
-			self.pool.as_ref().unwrap().prep_exec("SELECT * FROM Users", ())
-			.map(|result| {
+			self.pool.as_ref().unwrap().prep_exec("
+			    SELECT id, slack_id, deleted FROM Users
+			", ()).map(|result| {
 				result.map(|x| x.unwrap()).map(|row| {
-					let (id, slack_id, nickname, first_name, last_name, email,
-					    phone, deleted) = mysql::from_row(row);
+					let (id, slack_id, deleted) = mysql::from_row(row);
 					UserRecord {
 						id,
 						slack_id,
-					    nickname,
-					    first_name,
-					    last_name,
-					    email,
-					    phone,
 					    deleted,
 					}
 				}).collect()
@@ -40,25 +35,17 @@ impl DbManager {
     pub fn update_users(&self, records: &Vec<UserRecord>) {
         for mut stmt in self.pool.as_ref().unwrap().prepare("
             INSERT INTO Users
-                (slack_id, nickname, first_name, last_name, email, phone)
+                (slack_id, deleted, created)
             VALUES
-                (:slack_id, :nickname, :first_name, :last_name, :email, :phone)
+                (:slack_id, :deleted, NOW())
             ON DUPLICATE KEY UPDATE
-                slack_id   = VALUES(slack_id),
-                nickname   = VALUES(nickname),
-                first_name = VALUES(first_name),
-                last_name  = VALUES(last_name),
-                email      = VALUES(email),
-                phone      = VALUES(phone)
+                slack_id = VALUES(slack_id),
+                deleted  = VALUES(deleted)
         ").into_iter() {
             for record in records.iter() {
                 stmt.execute(params!{
-                    "slack_id"   => record.slack_id.clone(),
-                    "nickname"   => record.nickname.clone(),
-                    "first_name" => record.first_name.clone(),
-                    "last_name"  => record.last_name.clone(),
-                    "email"      => record.email.clone(),
-                    "phone"      => record.phone.clone(),
+                    "slack_id" => record.slack_id.clone(),
+                    "deleted"  => record.deleted.clone(),
                 }).unwrap();
             }
         }
@@ -70,8 +57,8 @@ impl DbManager {
     pub fn write_karma(&self, records: &Vec<KarmaRecord>) {
         for mut stmt in self.pool.as_ref().unwrap().prepare("
             INSERT INTO Karma
-                (recipient, donor, points)
-            SELECT R.id, D.id, :points
+                (recipient, donor, points, created)
+            SELECT R.id, D.id, :points, NOW()
             FROM
                 (SELECT id FROM Users WHERE slack_id = :r_slack_id) as R
                 JOIN (SELECT id FROM Users WHERE slack_id = :d_slack_id) as D

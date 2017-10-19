@@ -20,6 +20,7 @@ impl KarmaManager {
     }
 
     pub fn handle_message(&self, cli: &RtmClient, msg: Box<Message>) {
+        println!("MESSAGE: {:?}", msg);
         match *msg {
             Standard(std_msg) => self.handle_std_msg(cli, &std_msg),
             _ => return,
@@ -34,6 +35,12 @@ impl KarmaManager {
             None => None,
         };
 
+        // TODO need to convert records to KarmaRecords and then write them
+        // to the database. I might not even have to fetch the database users
+        // since we're dealing with just IDs now, but I should make sure that
+        // the database user does exist. Slack escapes the '<' and '>'
+        // characters so I don't need to worry about someone trying to spoof
+        // a user ID and inject SQL or break my regex.
         match recipients {
             Some(ref recipients) if !recipients.is_empty() => {
                 let db_users = self.db_manager.fetch_db_user_list();
@@ -43,16 +50,10 @@ impl KarmaManager {
                     let mut recipient = false;
 
                     recipients.iter().for_each(|ref tup| {
-                        let nickname = db_user.nickname
-                            .clone().unwrap_or("".to_string()).to_lowercase();
-                        let first_name = db_user.first_name
-                            .clone().unwrap_or("".to_string()).to_lowercase();
-                        let last_name = db_user.last_name
-                            .clone().unwrap_or("".to_string()).to_lowercase();
+                        let slack_id = db_user.slack_id
+                            .clone().unwrap_or("".to_string());
 
-                        if nickname == tup.0.to_lowercase()
-                            || first_name == tup.0.to_lowercase()
-                            || last_name == tup.0.to_lowercase() {
+                        if slack_id == tup.0 {
                             recipient = true;
                         }
                     });
@@ -95,21 +96,13 @@ impl KarmaManager {
     }
 
     pub fn update_user(&self, cli: &RtmClient, user: &User) {
-        let profile = user.profile.as_ref().unwrap();
         let user_vec = vec![
             UserRecord {
                 id: None,
                 slack_id: user.id.clone(),
-                nickname: user.name.clone(),
-                first_name: profile.first_name.clone(),
-                last_name: profile.last_name.clone(),
-                email: profile.email.clone(),
-                phone: profile.phone.clone(),
-                deleted: false,
+                deleted: user.deleted.unwrap_or_default(),
             },
         ];
-
-        println!("Updating User: {:?}", user_vec);
 
         self.db_manager.update_users(&user_vec);
     }
@@ -124,16 +117,9 @@ impl KarmaManager {
         let slack_users: Vec<UserRecord> =
             cli.start_response().users.as_ref().unwrap().iter()
             .map(|user| {
-                let profile = user.profile.as_ref().unwrap();
-
                 UserRecord {
                     id: None,
                     slack_id: user.id.clone(),
-                    nickname: user.name.clone(),
-                    first_name: profile.first_name.clone(),
-                    last_name: profile.last_name.clone(),
-                    email: profile.email.clone(),
-                    phone: profile.phone.clone(),
                     deleted: false,
                 }
             }).collect();
@@ -146,6 +132,9 @@ impl KarmaManager {
  * Regular Expressions
  */
 lazy_static! {
-    static ref INC_RE: Regex = Regex::new(r"([[:alpha:]0-9]+)\+\+").unwrap();
-    static ref DEC_RE: Regex = Regex::new(r"([[:alpha:]0-9]+)--").unwrap();
+    // Slack now converts a mention into a user id of the form: <@U123>
+    static ref INC_RE: Regex =
+        Regex::new(r"<@([[:alpha:]0-9]+)>\+\+").unwrap();
+    static ref DEC_RE: Regex =
+        Regex::new(r"<@([[:alpha:]0-9]+)>--").unwrap();
 }
